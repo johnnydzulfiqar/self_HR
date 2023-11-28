@@ -5,11 +5,16 @@ namespace App\Livewire;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use App\Models\Jadwal as Jadwals;
+use App\Models\User as Users;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class Jadwal extends Component
 {
-    public $jadwal_id, $user_id, $time_from, $time_to, $status, $addJadwal = false, $updateJadwal = false;
+    public $jadwal_id, $user_id, $time_from, $time_to, $status = false, $addJadwal = false, $updateJadwal = false;
 
     protected $rules = [
         'time_from' => 'required',
@@ -24,7 +29,11 @@ class Jadwal extends Component
     public function render()
     {
         $jadwal = \App\Models\Jadwal::latest()->get();
+        // $data = \App\Models\User::where(id === Auth::user()->id)->first();
         return view('livewire.jadwal', compact('jadwal'));
+        $jadwaladmin = \App\Models\Jadwal::latest()->get();
+        // $data = \App\Models\User::where(id === Auth::user()->id)->first();
+        return view('livewire.admin.jadwaladmin', compact('jadwal'));
     }
     public function create()
     {
@@ -32,17 +41,34 @@ class Jadwal extends Component
         $this->addJadwal = true;
         $this->updateJadwal = false;
     }
-    public function store()
+    public function store(Request $request)
     {
         $this->validate();
+        $time_to = Carbon::parse($request->time_to);
+        $time_from = Carbon::parse($request->time_from);
+        $a =  $time_to->diffInDays($time_from);
         try {
             \App\Models\Jadwal::create([
                 'time_from' => $this->time_from,
                 'time_to' => $this->time_to,
                 'status' => 0,
                 'user_id' => Auth::user()->id,
-                // 'slug' => Str::slug($this->time_from)
+                // 'jatah' => $a,
+                // $time_to = Carbon::parse($this->time_from),
+                // $time_from = Carbon::parse($this->time_to),
+                // $a =  $time_to->diffInDays($time_from),
             ]);
+            $user = \App\Models\User::findOrFail(Auth::user()->id);
+            if (!$user) {
+                session()->flash('error', 'user not found');
+            } else {
+                $time_to = Carbon::parse($this->time_from);
+                $time_from = Carbon::parse($this->time_to);
+                $a =  $time_to->diffInDays($time_from);
+                $user->jatah = $user->jatah - $a;
+                // dd($jatah);
+                $user->save();
+            }
             session()->flash('success', 'Jadwal Created Successfully!!');
             $this->resetFields();
             $this->addJadwal = false;
@@ -99,5 +125,38 @@ class Jadwal extends Component
         } catch (\Exception $e) {
             session()->flash('error', "Something goes wrong!!");
         }
+    }
+    // public function editadmin($id)
+    // {
+    //     try {
+    //         $jadwal = \App\Models\Jadwal::findOrFail($id);
+    //         if (!$jadwal) {
+    //             session()->flash('error', 'jadwal not found');
+    //         } else {
+    //             $this->status = $jadwal->status = true;
+    //             $this->updateJadwal = true;
+    //             $this->addJadwal = false;
+    //         }
+    //     } catch (\Exception $ex) {
+    //         session()->flash('error', 'Something goes wrong!!');
+    //     }
+    // }
+    // public function updateadmin()
+    // {
+    //     try {
+    //         \App\Models\Jadwal::whereId($this->jadwal_id)->update([
+    //             'status' => $this->status = 1,
+    //         ]);
+    //         session()->flash('success', 'Post Updated Successfully!!');
+    //     } catch (\Exception $ex) {
+    //         session()->flash('error', 'Something goes wrong!!');
+    //     }
+    // }
+    public function editadmin(Jadwal $id, Request $request)
+    {
+        $jadwal = Jadwal::find($request->id);
+        $jadwal->laporan = $request->status;
+        $jadwal->save();
+        return redirect('/admin/home');
     }
 }

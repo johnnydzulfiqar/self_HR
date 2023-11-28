@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('bukti', 150)->nullable();
             $table->date('time_from');
             $table->date('time_to');
-            $table->string('status')->nullable();
-            $table->string('slug');
+            $table->boolean('status')->nullable();
+            // $table->string('slug');
             $table->timestamps();
         });
     }
